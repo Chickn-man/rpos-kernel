@@ -23,6 +23,8 @@
 #############################################################################
 */
 
+#include "target.h"
+
 #ifndef _STRING2_H
 #define _STRING2_H
 
@@ -33,5 +35,12 @@ char *itohex(unsigned int num);
 
 int atoi(char *str);
 char *itoa(int num, char *buffer, int radix);
+
+#if TARGET == t_rpc8e
+
+//char *strupper(char *s);
+//char *strlower(char *s);
+
+#endif
 
 #endif 

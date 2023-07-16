@@ -27,17 +27,25 @@
 #include <stdlib.h>
 
 unsigned long chstolba(chs *input) {
-    if (input->head >= 255 || input->sector >= 63) return 1UL << 24; // return 2^24 (an impossible chs value)
+    unsigned long ret = 0;
     
-    return (255 * 63 * input->cylinder) + (255 * input->head) + input->sector - 1;
+    ret = input->sector - 1;
+    ret = (unsigned long)input->head << 6;
+    ret = (unsigned long)input->cylinder << 14;
+
+    return ret;
 }
 
 chs *lbatochs(unsigned long input) {
     chs ret;
 
-    ret.cylinder = (unsigned short)(input / (255 * 63));
-    ret.head = (unsigned char)((ret.cylinder * (255 * 63)) / 63);
-    ret.sector = ret.cylinder * (255 * 63) - ret.head * 63 + 1;
+    chs max = {0xff, 0x3f, 0x3ff};
+
+    if (input > (1UL << 24) - 1) return &max;
+
+    ret.sector = input & 0x3f + 1;
+    ret.head = input & 0x3fc0;
+    ret.cylinder = input & 0xffc000;
 
     return &ret;
 }

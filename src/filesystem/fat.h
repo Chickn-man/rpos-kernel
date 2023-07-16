@@ -26,6 +26,9 @@
 #ifndef _FILESYSTEM_FAT_H
 #define _FILESYSTEM_FAT_H
 
+#include "../target.h"
+#include "table.h"
+
 typedef struct {
     unsigned long entryPoint : 24;
     char oemID[8]; // non zero terminated string
@@ -49,6 +52,45 @@ typedef struct {
     char type[8]; // non zero terminated string
     unsigned char bootCode[448];
     unsigned short bootSignature;
+
 } fatBootSector;
 
-#endif
+typedef struct {
+    char name[8]; // non zero terminated string
+    char extension[3]; // non zero terminated string
+    unsigned char attributes;
+    unsigned char reserved;
+    unsigned char createMilli;
+    unsigned short createTime;
+    unsigned short createDate;
+    unsigned short lastReadData;
+    unsigned short reserved1;
+    unsigned short writeTime;
+    unsigned short writeDate;
+    unsigned short cluster;
+    unsigned long size;
+} fatDirEntry;
+
+unsigned short getFatEntry(unsigned short entry, unsigned char *fatTable);
+unsigned short setFatEntry(unsigned short entry, unsigned short value, unsigned char *fatTable);
+void initFat(tableEntry *partitionEntry, fatBootSector *fatBoot, fatDirEntry *dirBuffer);
+unsigned char *fatReadClusterChain(char drive, unsigned short cluster, unsigned char *fatTable, unsigned char *buffer);
+
+#define FAT_ATTR_READ_ONLY 0x1
+#define FAT_ATTR_HIDDEN    0x2
+#define FAT_ATTR_SYSTEM    0x4
+#define FAT_ATTR_LABLE     0x8
+#define FAT_ATTR_DIRECTORY 0x16
+#define FAT_ATTR_ARCHIVE   0x32
+
+#if TARGET == t_rpc8e
+
+#define FILE_ALLOCATION_TABLE 0xf000
+#define FAT_DIRECTORY 0xf400
+
+#define fileAllocationTable ((unsigned char *)FILE_ALLOCATION_TABLE)
+#define fatDirectory ((fatDirEntry *)FAT_DIRECTORY)
+
+#endif // TARGET == t_rpc8e
+
+#endif // defined _FILESYSTEM_FAT_H

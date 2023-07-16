@@ -41,9 +41,13 @@
 char input[128];
 char command[64];
 char buffer[64];
+char buffer1[64];
+char buffer2[64];
+unsigned char mbrEntry;
 
 int main(void) {
-    unsigned char i;
+    unsigned short i;
+    unsigned short j;
     char c;
 
     tableEntry *mbr = (void *)0x6be;
@@ -76,6 +80,8 @@ FOUND_FS:
     cputs(itoa(i, buffer, 10));
     cputs(")\n\r");
 
+    mbrEntry = i;
+
     /*if (mbr[i].lbaStart != chstolba((chs *)&mbr[i].startHead)) { // this does nothing and I dont feel like fixing it
         cputs("CHS doesnt match LBA - correct this? Y/n");
         if (cgetc() == 'y') {
@@ -87,6 +93,13 @@ FOUND_FS:
         cputc('\n');
         cputc('\r');
     }*/
+
+    for (i = 0; i < fatBoot->sectorsPerFat; i++) {
+        readSector('a', (mbr[mbrEntry].lbaStart + fatBoot->reservedSectors) + i, (unsigned char *)((unsigned short)fileAllocationTable + (512 * i))); // wizardry : loads the fat into ram
+    }
+
+    initFat(&mbr[mbrEntry], fatBoot, fatDirectory);
+    strcpy(cwd, "/");
 
     goto VERSION;
 
@@ -145,6 +158,109 @@ VERSION:            cputs("RedPower Operating System ");
                 } else if (strcmp(command, "poweroff") == 0) {
                     return 0;
 
+                } else if (strcmp(command, "pwd") == 0) {
+                    cputs(cwd);
+                    cputs("\n\r");
+
+                } else if (strcmp(command, "dir") == 0) {
+                    cputs("Contents of ");
+                    cputs(cwd);
+                    cputs("\n\n\r");
+                    cputs("  NAME   | EXT | ATTR | SIZE\n\r");
+                    for (i = 0; i < 40; i++) {
+                        if (*(fatDirectory[i].name) == 0) continue;
+                        if (fatDirectory[i].attributes & FAT_ATTR_HIDDEN) continue;
+                        if (fatDirectory[i].attributes & FAT_ATTR_LABLE) continue;
+
+                        memcpy(buffer, fatDirectory[i].name, 8);
+                        buffer[8] = 0;
+                        cputs(buffer);
+                        cputs(" | ");
+                        memcpy(buffer, fatDirectory[i].extension, 3);
+                        buffer[3] = 0;
+                        cputs(buffer);
+                         
+                        cputs(" | ");
+                        if (fatDirectory[i].attributes & FAT_ATTR_READ_ONLY) cputc('r'); else cputc('-');
+                        if (fatDirectory[i].attributes & FAT_ATTR_SYSTEM) cputc('s'); else cputc('-');
+                        if (fatDirectory[i].attributes & FAT_ATTR_DIRECTORY) cputc('d'); else cputc('-');
+                        if (fatDirectory[i].attributes & FAT_ATTR_ARCHIVE) cputc('a'); else cputc('-');
+                        cputs(" | ");
+                        cputs(itoa(fatDirectory[i].size, buffer, 10));
+                        cputs("\n\r");
+                    }
+                
+                } else if (strcmp(command, "cd") == 0) {
+                    strcpy(buffer, strtok(0, ""));
+                    strcpy(buffer2, buffer);
+                    strlower(buffer2);
+                    strupper(buffer);
+                    for (i = strlen(buffer); i < 11; i++) buffer[i] = ' ';
+
+                    for (i = 0; i < 16; i++) {
+                        if (*buffer != *(fatDirectory[i].name)) continue; // skip entry if first characters do not match
+                        if (!(fatDirectory[i].attributes & FAT_ATTR_DIRECTORY)) continue;
+
+                        memcpy(buffer1, fatDirectory[i].name, 11);
+                        buffer1[11] = 0; // zero terminate
+                        if (strcmp(buffer1, buffer) == 0) {
+                            if (fatDirectory[i].cluster) {
+                                fatReadClusterChain('a', fatDirectory[i].cluster, fileAllocationTable, (unsigned char *)fatDirectory);
+                                strcat(cwd, buffer2);
+                                strcatc(cwd, '/');
+                                i = 17;
+                                break;
+                            }
+                            readSector('a', (mbr[mbrEntry].lbaStart + fatBoot->reservedSectors) + (fatBoot->fatCopies * fatBoot->sectorsPerFat), (unsigned char *)fatDirectory);
+                            strcpy(cwd, "/");
+                            i = 17;
+                            break;
+                        }
+                    }
+
+                    if (i != 17) cputs("No such directory\n\r");
+
+                } else if (strcmp(command, "type") == 0) {
+                    strcpy(buffer, strtok(0, " "));
+                    
+                    for (i = 0; buffer[i] != '.' && i < 9; i++);
+                    buffer[i] = 0;
+
+                    strcpy(buffer1, buffer);
+                    strupper(buffer1);
+                    for (i = strlen(buffer1); i < 8; i++) buffer1[i] = ' ';
+
+                    strcpy(buffer2, buffer + strlen(buffer) + 1);
+                    strupper(buffer2);
+                    for (i = strlen(buffer2); i < 3; i++) buffer2[i] = ' ';
+
+                    strcpy(buffer, buffer1);
+                    strcat(buffer, buffer2);
+                    buffer[11] = 0;
+                    
+                    for (i = 0; i < 16; i++) {
+                        if (*buffer != *(fatDirectory[i].name)) continue; // skip entry if first characters do not match
+                        if (fatDirectory[i].attributes & FAT_ATTR_DIRECTORY) continue;
+                        if (fatDirectory[i].attributes & FAT_ATTR_LABLE) continue;
+
+                        memcpy(buffer1, fatDirectory[i].name, 11);
+                        buffer1[11] = 0; // zero terminate
+
+                        if (strcmp(buffer, buffer1) == 0) {
+                            fatReadClusterChain('a', fatDirectory[i].cluster, fileAllocationTable, (unsigned char *)0x8000);
+
+                            for (j = 0; j < fatDirectory[i].size; j++) {
+                                if (((unsigned char *)0x8000)[j] == '\n') cputs("\n\r");
+                                else cputc(((unsigned char *)0x8000)[j]);
+                            }
+
+                            i = 17;
+                            break;
+                        }
+                    }
+
+                    if (i != 17) cputs("File not found\n\r");
+                
                 } else {
                     cputs("command not found\n\r");
 

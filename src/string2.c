@@ -23,6 +23,8 @@
 #############################################################################
 */
 
+#include "target.h"
+
 #include "string2.h"
 #include <string.h>
 
@@ -80,3 +82,31 @@ char *itohex(unsigned int num) {
     return buffer;
 
 }
+
+#if TARGET == t_rpc8e
+/*
+char *strupper(char *s) {
+    unsigned int i;
+
+    for (i = 0; i < strlen(s); i++) {
+        s[i] = s[i] + (('a' - 'A') * (s[i] >= 'a' && s[i] <= 'z'));
+
+    }
+
+    return s;
+
+}
+
+char *strlower(char *s) {
+    unsigned int i;
+
+    for (i = 0; i < strlen(s); i++) {
+        s[i] = s[i] + (('A' - 'a') * (s[i] >= 'A' && s[i] <= 'Z'));
+
+    }
+
+    return s;
+
+}
+*/
+#endif
