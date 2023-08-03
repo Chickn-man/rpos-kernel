@@ -27,8 +27,7 @@
 #include "table.h"
 #include "../disk.h"
 
-#include "../conio2.h"
-#include <stdlib.h>
+#include "../conio.h"
 
 tableEntry *partition;
 fatDirEntry *dir;

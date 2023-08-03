@@ -31,12 +31,21 @@
 
 #endif
 
-#define cat(a,...) cat_impl(a, __VA_ARGS__)
-#define cat_impl(a,...) a ## __VA_ARGS__
+#define cat(a,b) cat_impl(a, b)
+#define cat_impl(a,b) a ## b
 
 #define t_rpc8e 1
 #define t_cx16 2
+#define t_x86 100
+#define t_x86_32 101
+#define t_x86_64 102
 
 #define TARGET cat(t_,TARGET_STRING)
+
+#if TARGET == t_rpc8e // CC == cc65
+#define packed
+#else
+#define packed __attribute__((packed))
+#endif
 
 #endif

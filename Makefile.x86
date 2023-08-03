@@ -1,5 +1,5 @@
 #
-#  Makefile for building the RPOS Kernel
+#  Makefile for building the RPOS Kernel for real mode x86
 #
 ##############################################################################
 #
@@ -29,17 +29,17 @@ VERSION_MAJ = 9
 VERSION_MIN = 1
 VERSION_FIX = 0
 
-CC = cl65
-AS = ca65
-LD = ld65
+CC = ia16-elf-gcc
+AS = nasm
+LD = ia16-elf-ld
 
-INCS = -I cc65/$(TARGET)/include -I /usr/share/cc65/include
+INCS =
 LIBS = 
 
-LDS = ./cc65/$(TARGET)/$(TARGET).cfg
-CFLAGS = $(LIBS) $(INCS) --cpu 65c02 -t none -O -g --standard cc65 -DVERSION_REL=$(VERSION_REL) -DVERSION_MAJ=$(VERSION_MAJ) -DVERSION_MIN=$(VERSION_MIN) -DVERSION_FIX=$(VERSION_FIX) -DTARGET_STRING=$(TARGET)
-ASFLAGS = --cpu 65816 -g -t none
-LDFLAGS = -C $(LDS)
+LDS = -T x86.ld
+CFLAGS = $(LIBS) $(INCS) -O1 -DVERSION_REL=$(VERSION_REL) -DVERSION_MAJ=$(VERSION_MAJ) -DVERSION_MIN=$(VERSION_MIN) -DVERSION_FIX=$(VERSION_FIX) -DTARGET_STRING=$(TARGET)
+ASFLAGS = -f elf
+LDFLAGS = -static
 
 SRCDIR := src
 OBJDIR := lib
@@ -57,9 +57,9 @@ DIRS = $(wildcard $(SRCDIR)/*)
 build: setup link
 
 .PHONY: link
-link: $(OBJS) cc65
+link: header $(OBJS)
 	@ echo !==== LINKING $^
-	$(LD) $(LDFLAGS) -o $(BUILDDIR)/$(PROGNAME) -m $(BUILDDIR)/$(PROGNAME).map $(OBJS) ./cc65/$(TARGET)/$(TARGET).lib
+	$(LD) $(LDFLAGS) -o $(BUILDDIR)/$(PROGNAME) $(LDS) $(OBJDIR)/header.o $(OBJS) 
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@ echo !==== COMPILING $^
@@ -70,7 +70,11 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 $(OBJDIR)/%.o: $(SRCDIR)/%.$(TARGET).asm
 	@ echo !==== ASSEMBLING $^
 	@ mkdir -p $(@D)
-	$(AS) $(ASFLAGS) $^  -o $@
+	$(AS) $(ASFLAGS) $^ -o $@
+
+.PHONY: header
+header:
+	@ nasm -f elf $(SRCDIR)/x86_header.s -o $(OBJDIR)/header.o
 
 .PHONY: setup
 setup:
@@ -82,12 +86,3 @@ setup:
 clean:
 	-@ rm -r $(BUILDDIR)
 	-@ rm -r $(OBJDIR)
-	@ make -C cc65/rpc8e clean
-
-.PHONY: cc65
-cc65:
-	make -C cc65/$(TARGET)
-
-.PHONY: x86
-x86:
-	make -f Makefile.x86 TARGET=x86 build

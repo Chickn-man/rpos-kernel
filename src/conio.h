@@ -1,5 +1,5 @@
 /*
-#  Extra string functions for the RPOS Kernel
+#  Conio functions for the RPOS Kernel
 #
 ##############################################################################
 #
@@ -25,22 +25,25 @@
 
 #include "target.h"
 
-#ifndef _STRING2_H
-#define _STRING2_H
+#ifndef _CONIO2_H
+#define _CONIO2_H
 
-void strcatc(char *ds, char c);
-void strdelc(char *str);
-unsigned int hextoi(char *str);
-char *itohex(unsigned int num);
+void blitShift(unsigned char sx, unsigned char sy, unsigned char dx, unsigned char dy, unsigned char w, unsigned char h);
+void blitFill(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned char character);
 
-int atoi(char *str);
-char *itoa(int num, char *buffer, int radix);
+void clrscr(void);
+void gotoxy(unsigned char x, unsigned char y);
+void gotox(unsigned char x);
+void gotoy(unsigned char y);
 
-#if TARGET == t_rpc8e
+unsigned char wherex(void);
+unsigned char wherey(void);
 
-//char *strupper(char *s);
-//char *strlower(char *s);
+void cputc(char c);
+void cputs(char *s);
+char cgetc(void);
 
-#endif
+void cputc2(char c);
+void cdelc(void);
 
-#endif 
+#endif // !defined _CONIO2_H

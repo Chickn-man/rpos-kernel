@@ -27,16 +27,14 @@
 
 #include "globals.h"
 #include "window.h"
-#include "conio2.h"
-#include "string2.h"
+#include "conio.h"
+#include "string.h"
+#include "memory.h"
 #include "disk.h"
 #include "asm/asm.h"
 #include "filesystem/table.h"
 #include "filesystem/fat.h"
-
-#include <stdint.h>
-#include <string.h>
-#include <memory.h>
+#include "api/api.h"
 
 char input[128];
 char command[64];
@@ -45,15 +43,48 @@ char buffer1[64];
 char buffer2[64];
 unsigned char mbrEntry;
 
+unsigned char bootDisk;
+
+extern void reboot(void);
+
 int main(void) {
     unsigned short i;
     unsigned short j;
     char c;
 
+#if TARGET == t_rpc8e
     tableEntry *mbr = (void *)0x6be;
 
     fatBootSector *fatBoot = (void *)0xfc00;
 
+    bootDisk = 80;
+#elif TARGET == t_x86
+    tableEntry fakembr = {
+        MBR_BOOTABLE,
+        0,
+        1,
+        0,
+        MBR_FAT,
+        1,
+        18,
+        80,
+        0,
+        2880,
+    };
+
+    i = 0;
+
+    tableEntry *mbr = &fakembr;
+
+    fatBootSector *fatBoot = (void *)0x7c00;
+
+    if (bootDisk < 80) goto FOUND_FS;
+
+    mbr = (void *)0x7c00 + 0x1be;
+
+    fatBoot = (void *)0x4a00;
+#endif
+ 
     for (i = 0; i < 4; i++) {
         if (mbr[i].systemID == MBR_FAT) goto EARLY_DETECT;
     }
@@ -61,7 +92,7 @@ int main(void) {
     if (mbr[i].systemID != MBR_FAT) cputs("extensivly checking for filesystem\n");
 
     for (i = 0; i < 4; i++) {
-        if (readSector('a', mbr[i].lbaStart, (unsigned char *)fatBoot) == (unsigned char *)2) continue;
+        if (readSector('a', mbr[i].lbaStart, (unsigned char *)fatBoot) == (unsigned char *)2) continue; // load the fat boot sector, if a disk error occured then continue to the next entry
         memcpy(fatBoot->type, buffer, 8);
         buffer[5] = 0;
 
@@ -70,7 +101,7 @@ int main(void) {
 
 EARLY_DETECT:
 
-    readSector('a', mbr[i].lbaStart, (unsigned char *)fatBoot);
+    readSector('a', mbr[i].lbaStart, (unsigned char *)fatBoot); // load the fat boot sector
 
 FOUND_FS:
 
@@ -101,15 +132,17 @@ FOUND_FS:
     initFat(&mbr[mbrEntry], fatBoot, fatDirectory);
     strcpy(cwd, "/");
 
-    goto VERSION;
+    //initApi();
+
+    goto VERSION; // prints version on startup
 
     while (1) {
         c = cgetc();
-        if (c == '\b') strdelc(input), cbkspc(), c = 0; else cputc(c);
+        if (c == '\b') strdelc(input), cputs("\b \b"), c = 0; else cputc(c);
 
         if (c == '\r' || c == '\n') {
             if (c == '\r') cputc('\n');
-            gotox(0);
+            cputc('\r');
 
             if (strlen(input) != 0) {
                 strcpy(command, strtok(input, " "));
@@ -139,7 +172,7 @@ VERSION:            cputs("RedPower Operating System ");
 
                 } else if (strcmp(command, "peek") == 0) {
                     // grab address from input, read value at addr and print value in hex
-                    cputs(itohex(*(unsigned char*)hextoi(strtok(0, " "))));
+                    cputs(itoa(*(unsigned char*)hextoi(strtok(0, " ")), buffer, 16));
                     cputc('\n');
                     cputc('\r');
 
@@ -153,8 +186,11 @@ VERSION:            cputs("RedPower Operating System ");
                     (*jump)();
 
                 } else if (strcmp(command, "reboot") == 0) {
+#if TARGET == t_rpc8e
                     ((void (*)(void))0x500)();
-                    
+#elif TARGET == t_x86
+                    reboot();
+#endif        
                 } else if (strcmp(command, "poweroff") == 0) {
                     return 0;
 
@@ -167,17 +203,19 @@ VERSION:            cputs("RedPower Operating System ");
                     cputs(cwd);
                     cputs("\n\n\r");
                     cputs("  NAME   | EXT | ATTR | SIZE\n\r");
-                    for (i = 0; i < 40; i++) {
-                        if (*(fatDirectory[i].name) == 0) continue;
+                    for (i = 0; i < 10; i++) {
+                        if (*(fatDirectory[i].name) == '\0') continue;
                         if (fatDirectory[i].attributes & FAT_ATTR_HIDDEN) continue;
                         if (fatDirectory[i].attributes & FAT_ATTR_LABLE) continue;
 
                         memcpy(buffer, fatDirectory[i].name, 8);
                         buffer[8] = 0;
+                        strlwr(buffer);
                         cputs(buffer);
                         cputs(" | ");
                         memcpy(buffer, fatDirectory[i].extension, 3);
                         buffer[3] = 0;
+                        strlwr(buffer);
                         cputs(buffer);
                          
                         cputs(" | ");
@@ -189,12 +227,12 @@ VERSION:            cputs("RedPower Operating System ");
                         cputs(itoa(fatDirectory[i].size, buffer, 10));
                         cputs("\n\r");
                     }
-                
+
                 } else if (strcmp(command, "cd") == 0) {
-                    strcpy(buffer, strtok(0, ""));
+                    strcpy(buffer, strtok(0, " "));
                     strcpy(buffer2, buffer);
-                    strlower(buffer2);
-                    strupper(buffer);
+                    strlwr(buffer2);
+                    strupr(buffer);
                     for (i = strlen(buffer); i < 11; i++) buffer[i] = ' ';
 
                     for (i = 0; i < 16; i++) {
@@ -227,11 +265,11 @@ VERSION:            cputs("RedPower Operating System ");
                     buffer[i] = 0;
 
                     strcpy(buffer1, buffer);
-                    strupper(buffer1);
+                    strupr(buffer1);
                     for (i = strlen(buffer1); i < 8; i++) buffer1[i] = ' ';
 
                     strcpy(buffer2, buffer + strlen(buffer) + 1);
-                    strupper(buffer2);
+                    strupr(buffer2);
                     for (i = strlen(buffer2); i < 3; i++) buffer2[i] = ' ';
 
                     strcpy(buffer, buffer1);
@@ -254,6 +292,47 @@ VERSION:            cputs("RedPower Operating System ");
                                 else cputc(((unsigned char *)0x8000)[j]);
                             }
 
+                            i = 17;
+                            break;
+                        }
+                    }
+
+                    if (i != 17) cputs("File not found\n\r");
+
+                } else if (strcmp(command, "load") == 0) {
+                    strcpy(buffer, strtok(0, " "));
+                    
+                    for (i = 0; buffer[i] != '.' && i < 9; i++);
+                    buffer[i] = 0;
+
+                    strcpy(buffer1, buffer);
+                    strupr(buffer1);
+                    for (i = strlen(buffer1); i < 8; i++) buffer1[i] = ' ';
+
+                    strcpy(buffer2, buffer + strlen(buffer) + 1);
+                    strupr(buffer2);
+                    for (i = strlen(buffer2); i < 3; i++) buffer2[i] = ' ';
+
+                    strcpy(buffer, buffer1);
+                    strcat(buffer, buffer2);
+                    buffer[11] = 0;
+
+                    strcpy(buffer2, strtok(0, " "));
+                    if (*buffer2 == *((unsigned char *)0)) {
+                        cputs("No address specified\n\r");
+                        i = 17;
+                    } else // this else is for the loop
+                    
+                    for (i = 0; i < 16; i++) {
+                        if (*buffer != *(fatDirectory[i].name)) continue; // skip entry if first characters do not match
+                        if (fatDirectory[i].attributes & FAT_ATTR_DIRECTORY) continue;
+                        if (fatDirectory[i].attributes & FAT_ATTR_LABLE) continue;
+
+                        memcpy(buffer1, fatDirectory[i].name, 11);
+                        buffer1[11] = 0; // zero terminate
+
+                        if (strcmp(buffer, buffer1) == 0) {
+                            fatReadClusterChain('a', fatDirectory[i].cluster, fileAllocationTable, (unsigned char *)hextoi(buffer2));
                             i = 17;
                             break;
                         }

@@ -26,6 +26,8 @@
 #ifndef _FILESYSTEM_TABLE_H
 #define _FILESYSTEM_TABLE_H
 
+#include "../target.h"
+
 typedef struct {
     unsigned char boot;
     unsigned char startHead;
@@ -37,7 +39,7 @@ typedef struct {
     unsigned short endCylinder : 10;
     unsigned long lbaStart;
     unsigned long lbaEnd;
-} tableEntry;
+} packed tableEntry;
 
 #define MBR_NOT_BOOTABLE 0x0
 #define MBR_BOOTABLE 0x80

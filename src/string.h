@@ -1,5 +1,5 @@
 /*
-#  Conio functions for the RPOS Kernel
+#  Extra string functions for the RPOS Kernel
 #
 ##############################################################################
 #
@@ -25,30 +25,27 @@
 
 #include "target.h"
 
-#ifndef _CONIO2_H
-#define _CONIO2_H
+#ifndef _STRING2_H
+#define _STRING2_H
 
-#if TARGET == t_rpc8e
 
-void blitShift(unsigned char sx, unsigned char sy, unsigned char dx, unsigned char dy, unsigned char w, unsigned char h);
-void blitFill(unsigned char x, unsigned char y, unsigned char w, unsigned char h, unsigned char character);
+unsigned short strlen(char *string);
+void strcpy(char *dst, char *src);
+void strcat(char *dst, char *src);
+void strcatc(char *dst, char c);
+int strcmp(char *s1, char *s2);
+void strdelc(char *str);
+char *strchr(char *s, int c);
+char *strtok(char *s, char *delim);
+char *strupr(char *s);
+char *strlwr(char *s);
 
-void clrscr(void);
-void gotoxy(unsigned char x, unsigned char y);
-void gotox(unsigned char x);
-void gotoy(unsigned char y);
+char toupper(char c);
+char tolower(char c);
 
-unsigned char wherex(void);
-unsigned char wherey(void);
+unsigned int hextoi(char *str);
+char *itohex(unsigned int num);
+int atoi(char *str);
+char *itoa(int n, char *buffer, int radix);
 
-void cputc(char c);
-void cputs(char *s);
-char cgetc(void);
-
-#endif // TARGET == t_rpc8e
-
-void cputc2(char c);
-void cbkspc(void);
-void cdelc(void);
-
-#endif // !defined _CONIO2_H
+#endif

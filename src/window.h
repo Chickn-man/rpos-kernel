@@ -26,7 +26,7 @@
 #ifndef _WINDOW_H
 #define _WINDOW_H
 
-#include <target.h>
+#include "target.h"
 
 #if TARGET == t_rpc8e
 
@@ -49,10 +49,10 @@
 #define BLIT_HEIGHT WINDOW + 0xd
 #define SCREEN_BUFFER WINDOW + 0x10
 
-#define IO_BUFFER WINDOW
+#define IO_BUFFER WINDOW + 0x0
 #define IO_LATCH WINDOW + 0x2
 
-#define DISK_BUFFER WINDOW
+#define DISK_BUFFER WINDOW + 0x0
 #define DISK_SECTOR 0xff80 // this is supposed to defined as "WINDOW + 0x80" but that doesn't work for some reason, it compiles to 0x0000, it's prolly a bug with cc65.
 #define DISK_COMMAND WINDOW + 0x82
 

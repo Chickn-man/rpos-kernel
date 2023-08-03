@@ -24,7 +24,6 @@
 */
 
 #include "table.h"
-#include <stdlib.h>
 
 unsigned long chstolba(chs *input) {
     unsigned long ret = 0;

@@ -25,7 +25,7 @@
 
 #include "target.h"
 
-#include "conio2.h"
+#include "conio.h"
 #include "globals.h"
 
 #if TARGET == t_rpc8e
@@ -110,6 +110,15 @@ void cputc(char c) {
 
     screenRow = cursorY;
 
+    if (c == '\b') {
+        if (wherex() == 0 && wherey() == 0) return;
+
+        gotox(wherex() - 1);
+        if (wherex() == 255) gotoxy(79, wherey() - 1);
+
+        return;
+    }
+
     if (c != '\n' && c != '\r') screenBuffer[cursorX] = c;
 
     cursorX = cursorX + 1;
@@ -158,6 +167,18 @@ char cgetc(void) {
     return key;
 }
 
+void cputs(char *s) {
+    while (*s != 0) {
+        cputc(*s++);
+    }
+}
+
+void cdelc(void) {
+    cputc(' ');
+
+    gotox(wherex() - 1);
+}
+
 #endif
 
 /* puts a character c at the cursor position ignoring \n and \r */
@@ -168,24 +189,3 @@ void cputc2(char c) {
    
 }
 
-void cputs(char *s) {
-    while (*s != 0) {
-        cputc(*s++);
-    }
-}
-
-void cbkspc(void) {
-    if (wherex() == 0 && wherey() == 0) return;
-
-    gotox(wherex() - 1);
-    if (wherex() == 255) gotoxy(79, wherey() - 1);
-
-    cputc(' ');
-    gotox(wherex() - 1);
-}
-
-void cdelc(void) {
-    cputc(' ');
-
-    gotox(wherex() - 1);
-}

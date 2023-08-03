@@ -53,7 +53,7 @@ typedef struct {
     unsigned char bootCode[448];
     unsigned short bootSignature;
 
-} fatBootSector;
+} packed fatBootSector;
 
 typedef struct {
     char name[8]; // non zero terminated string
@@ -69,7 +69,7 @@ typedef struct {
     unsigned short writeDate;
     unsigned short cluster;
     unsigned long size;
-} fatDirEntry;
+} packed fatDirEntry;
 
 unsigned short getFatEntry(unsigned short entry, unsigned char *fatTable);
 unsigned short setFatEntry(unsigned short entry, unsigned short value, unsigned char *fatTable);
@@ -88,9 +88,14 @@ unsigned char *fatReadClusterChain(char drive, unsigned short cluster, unsigned 
 #define FILE_ALLOCATION_TABLE 0xf000
 #define FAT_DIRECTORY 0xf400
 
+#elif TARGET == t_x86
+
+#define FILE_ALLOCATION_TABLE 0x6800
+#define FAT_DIRECTORY 0x4c00
+
+#endif
+
 #define fileAllocationTable ((unsigned char *)FILE_ALLOCATION_TABLE)
 #define fatDirectory ((fatDirEntry *)FAT_DIRECTORY)
-
-#endif // TARGET == t_rpc8e
 
 #endif // defined _FILESYSTEM_FAT_H
